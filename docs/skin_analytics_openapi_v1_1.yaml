@@ -1,0 +1,1063 @@
+openapi: 3.1.0
+info:
+  title: CIDWeb Skin Analytics API
+  version: 1.1.0-draft
+  description: >
+    Enterprise skin data management and analytics platform API draft.
+servers:
+  - url: http://localhost:8000/api/v1
+    description: Local Docker Compose demo
+  - url: https://demo.example.com/api/v1
+    description: Future hosted demo placeholder
+tags:
+  - name: auth
+    description: Authentication and current-user endpoints.
+  - name: projects
+    description: Project lifecycle, members, brand bindings and version bundles.
+  - name: brands-config
+    description: Brand configuration, metric catalogs, questionnaire template versions and version bundles.
+  - name: questionnaires
+    description: Questionnaire templates, campaigns, public submissions and historical imports.
+  - name: datasets
+    description: Dataset creation, file upload, parsing, mapping, preprocessing and version publishing.
+  - name: subjects-visits
+    description: Subject records, identifier mappings and visit-level records.
+  - name: analysis
+    description: Analysis templates, analysis jobs, manifests, results and derived variable publishing.
+  - name: charts-exports
+    description: Chart configuration, rendering and export package generation.
+  - name: tasks
+    description: Unified async task querying, retry and cancellation.
+  - name: audit-approvals
+    description: Audit logs and high-sensitivity export approval lifecycle.
+  - name: restricted-analytics
+    description: Platform-level restricted analytics for super administrators only.
+security:
+  - bearerAuth: []
+paths:
+  /auth/login:
+    post:
+      tags: [auth]
+      summary: Login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username:
+                  type: string
+                password:
+                  type: string
+      responses:
+        '200':
+          description: Login success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accessToken:
+                    type: string
+                  refreshToken:
+                    type: string
+                  user:
+                    $ref: '#/components/schemas/UserProfile'
+  /auth/me:
+    get:
+      tags: [auth]
+      summary: Get current user
+      responses:
+        '200':
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+  /projects:
+    get:
+      tags: [projects]
+      summary: List projects
+      responses:
+        '200':
+          description: Project list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Project'
+    post:
+      tags: [projects]
+      summary: Create project
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, importModeDefault]
+              properties:
+                name:
+                  type: string
+                importModeDefault:
+                  type: string
+                  enum: [batch, one_off]
+      responses:
+        '201':
+          description: Project created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+  /projects/{projectId}/brand-bindings:
+    get:
+      tags: [projects]
+      summary: Get project brand bindings
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      responses:
+        '200':
+          description: Brand bindings
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ProjectBrandBinding'
+    put:
+      tags: [projects]
+      summary: Update project brand bindings
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [bindings]
+              properties:
+                bindings:
+                  type: array
+                  items:
+                    type: object
+                    required: [brandId, defaultVersionBundleId]
+                    properties:
+                      brandId:
+                        type: string
+                      defaultVersionBundleId:
+                        type: string
+      responses:
+        '200':
+          description: Bindings updated
+  /brands:
+    get:
+      tags: [brands-config]
+      summary: List brands
+      responses:
+        '200':
+          description: Brands
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Brand'
+  /version-bundles/{versionBundleId}:
+    get:
+      tags: [brands-config]
+      summary: Get version bundle detail
+      parameters:
+        - $ref: '#/components/parameters/VersionBundleId'
+      responses:
+        '200':
+          description: Version bundle
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VersionBundle'
+  /projects/{projectId}/datasets:
+    get:
+      tags: [datasets]
+      summary: List datasets for project
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      responses:
+        '200':
+          description: Dataset list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Dataset'
+    post:
+      tags: [datasets]
+      summary: Create dataset
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [brandId, datasetName, datasetType]
+              properties:
+                brandId:
+                  type: string
+                datasetName:
+                  type: string
+                datasetType:
+                  type: string
+      responses:
+        '201':
+          description: Dataset created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Dataset'
+  /datasets/{datasetId}/uploads:
+    post:
+      tags: [datasets]
+      summary: Upload dataset file
+      parameters:
+        - $ref: '#/components/parameters/DatasetId'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file, brandId, versionBundleId]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                brandId:
+                  type: string
+                versionBundleId:
+                  type: string
+                importMode:
+                  type: string
+                  enum: [append, merge, replace, patch]
+      responses:
+        '201':
+          description: Upload accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadJob'
+  /uploads/{uploadId}/parse:
+    post:
+      tags: [datasets]
+      summary: Parse upload
+      parameters:
+        - $ref: '#/components/parameters/UploadId'
+      responses:
+        '202':
+          description: Parse task queued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskEnvelope'
+  /uploads/{uploadId}/mapping:
+    post:
+      tags: [datasets]
+      summary: Submit field mappings
+      parameters:
+        - $ref: '#/components/parameters/UploadId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [fieldMappings]
+              properties:
+                fieldMappings:
+                  type: array
+                  items:
+                    type: object
+                    required: [rawFieldName, standardMetricCode]
+                    properties:
+                      rawFieldName:
+                        type: string
+                      standardMetricCode:
+                        type: string
+                identifierStrategy:
+                  type: string
+                  enum: [micro_ecology_first, rd_mapping]
+      responses:
+        '200':
+          description: Mapping saved
+  /uploads/{uploadId}/publish-version:
+    post:
+      tags: [datasets]
+      summary: Publish dataset version
+      parameters:
+        - $ref: '#/components/parameters/UploadId'
+      responses:
+        '201':
+          description: Dataset version published
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DatasetVersion'
+  /dataset-versions/{datasetVersionId}/profile:
+    get:
+      tags: [datasets]
+      summary: Get dataset version profile for Data Explorer
+      parameters:
+        - $ref: '#/components/parameters/DatasetVersionId'
+      responses:
+        '200':
+          description: Dataset version profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DatasetVersionProfile'
+  /dataset-versions/{datasetVersionId}/browse-filters:
+    get:
+      tags: [datasets]
+      summary: Get available browse filters and fields
+      parameters:
+        - $ref: '#/components/parameters/DatasetVersionId'
+      responses:
+        '200':
+          description: Browse filters
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  brands:
+                    type: array
+                    items: { type: string }
+                  fields:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        field: { type: string }
+                        label: { type: string }
+                        dataType: { type: string }
+  /dataset-versions/{datasetVersionId}/browse/query:
+    post:
+      tags: [datasets]
+      summary: Query paged dataset rows for Data Explorer
+      parameters:
+        - $ref: '#/components/parameters/DatasetVersionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BrowseQueryRequest'
+      responses:
+        '200':
+          description: Browse query result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BrowseQueryResponse'
+  /dataset-versions/{datasetVersionId}/chart-previews:
+    post:
+      tags: [datasets]
+      summary: Generate chart preview from current browse query
+      parameters:
+        - $ref: '#/components/parameters/DatasetVersionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [querySnapshotId, chartType, field]
+              properties:
+                querySnapshotId: { type: string }
+                chartType: { type: string }
+                field: { type: string }
+                compareBy:
+                  type: string
+                  nullable: true
+      responses:
+        '200':
+          description: Chart preview data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  chartType: { type: string }
+                  field: { type: string }
+                  series:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+  /questionnaire-campaigns:
+    post:
+      tags: [questionnaires]
+      summary: Create questionnaire campaign
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [projectId, brandId, templateVersionId, accessMode]
+              properties:
+                projectId:
+                  type: string
+                brandId:
+                  type: string
+                templateVersionId:
+                  type: string
+                accessMode:
+                  type: string
+                  enum: [internal_login, public_anonymous]
+                expiresAt:
+                  type: string
+                  format: date-time
+      responses:
+        '201':
+          description: Campaign created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuestionnaireCampaign'
+  /public/questionnaires/{campaignToken}:
+    get:
+      tags: [questionnaires]
+      summary: Get public questionnaire
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/CampaignToken'
+      responses:
+        '200':
+          description: Public questionnaire
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicQuestionnaire'
+  /public/questionnaires/{campaignToken}/submit:
+    post:
+      tags: [questionnaires]
+      summary: Submit public questionnaire response
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/CampaignToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuestionnaireSubmitRequest'
+      responses:
+        '201':
+          description: Response submitted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuestionnaireResponse'
+  /questionnaire-response-imports:
+    post:
+      tags: [questionnaires]
+      summary: Import historical questionnaire responses
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file, projectId, brandId, templateVersionId]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                projectId:
+                  type: string
+                brandId:
+                  type: string
+                templateVersionId:
+                  type: string
+                datasetVersionId:
+                  type: string
+      responses:
+        '202':
+          description: Import task queued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskEnvelope'
+  /analysis-jobs:
+    post:
+      tags: [analysis]
+      summary: Create analysis job
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnalysisJobCreateRequest'
+      responses:
+        '201':
+          description: Job created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalysisJob'
+  /analysis-jobs/{jobId}:
+    get:
+      tags: [analysis]
+      summary: Get analysis job
+      parameters:
+        - $ref: '#/components/parameters/JobId'
+      responses:
+        '200':
+          description: Analysis job
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalysisJob'
+  /analysis-jobs/{jobId}/result:
+    get:
+      tags: [analysis]
+      summary: Get analysis result
+      parameters:
+        - $ref: '#/components/parameters/JobId'
+      responses:
+        '200':
+          description: Analysis result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalysisResult'
+  /analysis-jobs/{jobId}/manifest:
+    get:
+      tags: [analysis]
+      summary: Get execution manifest
+      parameters:
+        - $ref: '#/components/parameters/JobId'
+      responses:
+        '200':
+          description: Execution manifest
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecutionManifest'
+  /derived-variable-sets/{setId}/publish:
+    post:
+      tags: [analysis]
+      summary: Publish derived variables
+      parameters:
+        - $ref: '#/components/parameters/DerivedVariableSetId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [publishMode]
+              properties:
+                publishMode:
+                  type: string
+                  enum: [new_dataset_version]
+                datasetNameSuffix:
+                  type: string
+                selectedVariables:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '201':
+          description: New dataset version created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DatasetVersion'
+  /tasks/{taskId}:
+    get:
+      tags: [tasks]
+      summary: Get task status
+      parameters:
+        - $ref: '#/components/parameters/TaskId'
+      responses:
+        '200':
+          description: Task status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskEnvelope'
+  /export-approval-requests:
+    post:
+      tags: [audit-approvals]
+      summary: Create export approval request
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [exportPackageId, reason]
+              properties:
+                exportPackageId:
+                  type: string
+                reason:
+                  type: string
+      responses:
+        '201':
+          description: Approval request created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportApprovalRequest'
+  /export-approval-requests/{requestId}/approve:
+    post:
+      tags: [audit-approvals]
+      summary: Approve export request
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          description: Approval request approved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportApprovalRequest'
+  /export-approval-requests/{requestId}/reject:
+    post:
+      tags: [audit-approvals]
+      summary: Reject export request
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                decisionNote:
+                  type: string
+      responses:
+        '200':
+          description: Approval request rejected
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportApprovalRequest'
+  /restricted-analytics/jobs:
+    post:
+      tags: [restricted-analytics]
+      summary: Create restricted analytics job
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RestrictedAnalyticsJobCreateRequest'
+      responses:
+        '201':
+          description: Restricted analytics job created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalysisJob'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    ProjectId:
+      name: projectId
+      in: path
+      required: true
+      schema: { type: string }
+    DatasetId:
+      name: datasetId
+      in: path
+      required: true
+      schema: { type: string }
+    UploadId:
+      name: uploadId
+      in: path
+      required: true
+      schema: { type: string }
+    DatasetVersionId:
+      name: datasetVersionId
+      in: path
+      required: true
+      schema: { type: string }
+    VersionBundleId:
+      name: versionBundleId
+      in: path
+      required: true
+      schema: { type: string }
+    JobId:
+      name: jobId
+      in: path
+      required: true
+      schema: { type: string }
+    TaskId:
+      name: taskId
+      in: path
+      required: true
+      schema: { type: string }
+    RequestId:
+      name: requestId
+      in: path
+      required: true
+      schema: { type: string }
+    DerivedVariableSetId:
+      name: setId
+      in: path
+      required: true
+      schema: { type: string }
+    CampaignToken:
+      name: campaignToken
+      in: path
+      required: true
+      schema: { type: string }
+  schemas:
+    UserProfile:
+      type: object
+      properties:
+        id: { type: string }
+        tenantId: { type: string }
+        displayName: { type: string }
+        roles:
+          type: array
+          items: { type: string }
+        isSuperAdmin: { type: boolean }
+    Brand:
+      type: object
+      properties:
+        id: { type: string }
+        tenantId: { type: string }
+        name: { type: string }
+        status: { type: string }
+    Project:
+      type: object
+      properties:
+        id: { type: string }
+        tenantId: { type: string }
+        name: { type: string }
+        status: { type: string }
+        allowedBrandIds:
+          type: array
+          items: { type: string }
+        defaultImportMode:
+          type: string
+          enum: [batch, one_off]
+        highSensitivityExportPolicy:
+          type: string
+          enum: [approval_required]
+    ProjectBrandBinding:
+      type: object
+      properties:
+        projectId: { type: string }
+        brandId: { type: string }
+        defaultVersionBundleId: { type: string }
+        status: { type: string }
+    VersionBundle:
+      type: object
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        brandId: { type: string }
+        brandConfigVersionId: { type: string }
+        metricCatalogVersionId: { type: string }
+        questionnaireTemplateVersionId: { type: string }
+        status: { type: string }
+    Dataset:
+      type: object
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        brandId: { type: string }
+        datasetName: { type: string }
+        datasetType: { type: string }
+    DatasetVersion:
+      type: object
+      properties:
+        id: { type: string }
+        datasetId: { type: string }
+        projectId: { type: string }
+        brandId: { type: string }
+        parentVersionId:
+          type: string
+          nullable: true
+        importBatchId:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [draft, published, frozen, archived]
+        rowCount: { type: integer }
+        columnCount: { type: integer }
+    DatasetVersionProfile:
+      type: object
+      properties:
+        datasetVersionId: { type: string }
+        projectId: { type: string }
+        brandId: { type: string }
+        datasetId: { type: string }
+        sampleCount: { type: integer }
+        fieldCount: { type: integer }
+        missingRateSummary:
+          type: object
+          additionalProperties: true
+    BrowseQueryRequest:
+      type: object
+      properties:
+        projectId: { type: string }
+        brandId: { type: string }
+        selectedFields:
+          type: array
+          items: { type: string }
+        filters:
+          type: array
+          items:
+            type: object
+            properties:
+              field: { type: string }
+              operator: { type: string }
+              value: {}
+        sort:
+          type: object
+          properties:
+            field: { type: string }
+            direction:
+              type: string
+              enum: [asc, desc]
+        page: { type: integer }
+        pageSize: { type: integer }
+    BrowseQueryResponse:
+      type: object
+      properties:
+        querySnapshotId: { type: string }
+        summary:
+          type: object
+          additionalProperties: true
+        columns:
+          type: array
+          items:
+            type: object
+            properties:
+              field: { type: string }
+              label: { type: string }
+              dataType: { type: string }
+        rows:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        page: { type: integer }
+        pageSize: { type: integer }
+        totalPages: { type: integer }
+    UploadJob:
+      type: object
+      properties:
+        id: { type: string }
+        datasetId: { type: string }
+        brandId: { type: string }
+        versionBundleId: { type: string }
+        status: { type: string }
+    AnalysisJobCreateRequest:
+      type: object
+      required: [projectId, brandId, versionBundleId, datasetVersionId, analysisType, mode, idempotencyKey]
+      properties:
+        projectId: { type: string }
+        brandId: { type: string }
+        versionBundleId: { type: string }
+        datasetVersionId: { type: string }
+        analysisType: { type: string }
+        mode:
+          type: string
+          enum: [quick, advanced]
+        cohortRuleId:
+          type: string
+          nullable: true
+        variables:
+          type: object
+          additionalProperties: true
+        options:
+          type: object
+          additionalProperties: true
+        idempotencyKey: { type: string }
+    RestrictedAnalyticsJobCreateRequest:
+      type: object
+      required: [tenantIds, brandIds, analysisType, idempotencyKey]
+      properties:
+        tenantIds:
+          type: array
+          items: { type: string }
+        brandIds:
+          type: array
+          items: { type: string }
+        analysisType: { type: string }
+        aggregationLevel:
+          type: string
+          enum: [aggregated_only]
+        idempotencyKey: { type: string }
+    AnalysisJob:
+      type: object
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        brandId: { type: string }
+        versionBundleId: { type: string }
+        datasetVersionId: { type: string }
+        analysisType: { type: string }
+        status:
+          type: string
+          enum: [draft, queued, running, partial_success, succeeded, failed, cancelled, expired]
+        taskId: { type: string }
+        executionManifestId: { type: string }
+        resultId:
+          type: string
+          nullable: true
+    ExecutionManifest:
+      type: object
+      properties:
+        id: { type: string }
+        tenantId: { type: string }
+        projectId: { type: string }
+        brandId: { type: string }
+        versionBundleId: { type: string }
+        datasetVersionId: { type: string }
+        datasetVersionHash: { type: string }
+        analysisTemplateVersion: { type: string }
+        engineVersion: { type: string }
+        libraryLock:
+          type: object
+          additionalProperties: true
+        randomSeed: { type: integer }
+        timezone: { type: string }
+        manifestHash: { type: string }
+    AnalysisResult:
+      type: object
+      properties:
+        id: { type: string }
+        analysisJobId: { type: string }
+        resultType: { type: string }
+        resultSummary:
+          type: object
+          additionalProperties: true
+        narrativeText: { type: string }
+    QuestionnaireCampaign:
+      type: object
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        brandId: { type: string }
+        templateVersionId: { type: string }
+        accessMode:
+          type: string
+          enum: [internal_login, public_anonymous]
+        campaignToken: { type: string }
+        status: { type: string }
+        expiresAt:
+          type: string
+          format: date-time
+    PublicQuestionnaire:
+      type: object
+      properties:
+        campaignId: { type: string }
+        campaignToken: { type: string }
+        templateVersionId: { type: string }
+        title: { type: string }
+        questions:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+    QuestionnaireSubmitRequest:
+      type: object
+      required: [answers]
+      properties:
+        respondentMeta:
+          type: object
+          additionalProperties: true
+        answers:
+          type: array
+          items:
+            type: object
+            required: [questionCode, value]
+            properties:
+              questionCode: { type: string }
+              value: {}
+    QuestionnaireResponse:
+      type: object
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        brandId: { type: string }
+        templateVersionId: { type: string }
+        status:
+          type: string
+          enum: [draft, submitted, invalid, scored, pending_match]
+        submissionChannel:
+          type: string
+          enum: [internal, public_link, qr_code, excel_import]
+        isAnonymous: { type: boolean }
+    ExportApprovalRequest:
+      type: object
+      properties:
+        id: { type: string }
+        exportPackageId: { type: string }
+        requesterUserId: { type: string }
+        approverUserId:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [pending_approval, approved, rejected, expired]
+        reason: { type: string }
+        approvedAt:
+          type: string
+          format: date-time
+          nullable: true
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+    TaskEnvelope:
+      type: object
+      properties:
+        taskId: { type: string }
+        status:
+          type: string
+          enum: [draft, queued, running, partial_success, succeeded, failed, cancelled, expired]
+        taskType: { type: string }
+        resultRef:
+          type: string
+          nullable: true
+    ApiError:
+      type: object
+      properties:
+        code: { type: string }
+        message: { type: string }
+        details:
+          type: object
+          additionalProperties: true

@@ -1,0 +1,32 @@
+{
+  "name": "cidweb",
+  "version": "1.0.0",
+  "description": "Current design and implementation artifacts are in:",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/shenqili/CIDWeb.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/shenqili/CIDWeb/issues"
+  },
+  "homepage": "https://github.com/shenqili/CIDWeb#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.58.2"
+  },
+  "dependencies": {
+    "playwright": "^1.58.2",
+    "playwright-core": "^1.58.2"
+  }
+}

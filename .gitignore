@@ -1,0 +1,18 @@
+.env.demo
+node_modules/
+playwright-report/
+test-results/
+storage/
+tmp_input/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Next.js build output
+.next/
+
+# Local runtime artifacts
+backend/celerybeat-schedule
+
